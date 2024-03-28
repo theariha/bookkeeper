@@ -96,9 +96,16 @@ class SQliteRepository(AbstractRepository[T]):
                 for i in range(1, len(where)):
                     text += f" AND {where_keys[i]}) = ({where_values[i]})"
                 cur.execute(text)
-            res = cur.fetchone()
-        con.close()
-        return res
+            res = cur.fetchall()
+            con.close()
+        out = []
+        for element in res:
+            obj = self._class_type()
+            setattr(obj, "pk", res[0])
+            for j, name in enumerate(self._fields, 1):
+                setattr(obj, name, element[j])
+            out.append(obj)
+        return out
 
     def update(self, obj: T) -> None:
         """Обновить данные об объекте. Объект должен содержать поле pk."""
@@ -118,7 +125,17 @@ class SQliteRepository(AbstractRepository[T]):
                 values,
             )
 
-
         con.close()
 
+        return None
+
+    def delete(self, pk: int) -> None:
+        """Удалить запись"""
+
+        with sqlite3.connect(self._base_name) as con:
+            cur = con.cursor()
+            cur.execute("PRAGMA foreign_keys = ON")
+            cur.execute(
+                f"DELETE FROM {self._table_name} WHERE pk = {pk}")
+        con.close()
         return None
