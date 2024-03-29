@@ -1,8 +1,7 @@
-from bookkeeper.repository.abstract_repository import AbstractRepository, T
+import sqlite3
 import inspect
 from typing import Any
-
-import sqlite3
+from bookkeeper.repository.abstract_repository import AbstractRepository, T
 
 
 class SQliteRepository(AbstractRepository[T]):
@@ -22,9 +21,9 @@ class SQliteRepository(AbstractRepository[T]):
             cur.execute("PRAGMA foreign_keys = ON")
             cur.execute(
                 f"CREATE TABLE IF NOT EXISTS {self._table_name}"
-                + "(pk INTEGER PRIMARY KEY NOT NULL, "
-                + ", ".join(
-                    f"{name} {self._py_to_sql(tpy)}"
+                + "(pk INTEGER PRIMARY KEY NOT NULL"
+                + " ".join(
+                    f", {name} {self._py_to_sql(tpy)}"
                     for name, tpy in self._fields.items()
                 )
                 + ")"
@@ -53,7 +52,7 @@ class SQliteRepository(AbstractRepository[T]):
             cur = con.cursor()
             cur.execute("PRAGMA foreign_keys = ON")
             cur.execute(
-                f"INSERT INTO {self._table_name} ({names}) VALUES ({placeholders})",
+                f"INSERT INTO {self._table_name} ({names}) VALUES ({placeholders});",
                 values,
             )
 
@@ -72,11 +71,13 @@ class SQliteRepository(AbstractRepository[T]):
             cur.execute(f"SELECT * FROM {self._table_name} WHERE pk = {pk}")
             res = cur.fetchone()
         con.close()
+        if res is None:
+            return None
         obj = self._class_type()
         setattr(obj, "pk", res[0])
         for i, name in enumerate(self._fields, 1):
             setattr(obj, name, res[i])
-        return res
+        return obj
 
     def get_all(self, where: dict[str, Any] | None = None) -> list[T]:
         """
@@ -92,16 +93,16 @@ class SQliteRepository(AbstractRepository[T]):
             else:
                 where_keys = list(where.keys())
                 where_values = list(where.values())
-                text = f"SELECT * FROM {self._table_name} WHERE ({where_keys[0]}) = ({where_values[0]})"
+                text = f"SELECT * FROM {self._table_name} WHERE {where_keys[0]} = ?"
                 for i in range(1, len(where)):
-                    text += f" AND {where_keys[i]}) = ({where_values[i]})"
-                cur.execute(text)
+                    text += f" AND {where_keys[i]} = ?"
+                cur.execute(text, where_values)
             res = cur.fetchall()
-            con.close()
+        con.close()
         out = []
         for element in res:
             obj = self._class_type()
-            setattr(obj, "pk", res[0])
+            setattr(obj, "pk", element[0])
             for j, name in enumerate(self._fields, 1):
                 setattr(obj, name, element[j])
             out.append(obj)
@@ -121,21 +122,21 @@ class SQliteRepository(AbstractRepository[T]):
             cur = con.cursor()
             cur.execute("PRAGMA foreign_keys = ON")
             cur.execute(
-                f"UPDATE {self._table_name} SET ({names}) VALUES ({placeholders}) WHERE pk = {obj.pk}",
+                f"UPDATE {self._table_name} "
+                + f"SET ({names}) = ({placeholders}) WHERE pk={obj.pk}",
                 values,
             )
+            if con.total_changes == 0:
+                raise ValueError(f"Object with pk = {obj.pk} does not exist")
 
         con.close()
-
-        return None
 
     def delete(self, pk: int) -> None:
         """Удалить запись"""
-
         with sqlite3.connect(self._base_name) as con:
             cur = con.cursor()
             cur.execute("PRAGMA foreign_keys = ON")
-            cur.execute(
-                f"DELETE FROM {self._table_name} WHERE pk = {pk}")
+            cur.execute(f"DELETE FROM {self._table_name} WHERE pk = {pk}")
+            if con.total_changes == 0:
+                raise KeyError(f"Object with pk = {pk} does not exist")
         con.close()
-        return None
