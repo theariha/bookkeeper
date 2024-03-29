@@ -1,6 +1,6 @@
 import sqlite3
 import inspect
-from typing import Any
+from typing import Any, cast
 from bookkeeper.repository.abstract_repository import AbstractRepository, T
 
 
@@ -56,6 +56,7 @@ class SQliteRepository(AbstractRepository[T]):
                 values,
             )
 
+            assert cur.lastrowid is not None
             obj.pk = cur.lastrowid
 
         con.close()
@@ -77,7 +78,8 @@ class SQliteRepository(AbstractRepository[T]):
         setattr(obj, "pk", res[0])
         for i, name in enumerate(self._fields, 1):
             setattr(obj, name, res[i])
-        return obj
+        assert isinstance(obj, self._class_type)
+        return cast(T, obj)
 
     def get_all(self, where: dict[str, Any] | None = None) -> list[T]:
         """
