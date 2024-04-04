@@ -46,6 +46,42 @@ class PandasModel(QtCore.QAbstractTableModel):
         )
 
 
+class CategoryChangeWindow(QtWidgets.QWidget):
+
+    def __init__(self, parent, categoryes, ro, col):
+        super().__init__()
+        self.par = parent
+        self.categoryes = categoryes
+        self.ro = ro
+        self.col = col
+        self.correct_category_inlist()
+
+    def correct_category_inlist(self):
+        ok_button = QtWidgets.QPushButton("Ок")
+        invite_label = QtWidgets.QLabel("Выберите категорию")
+        self.layout = QtWidgets.QGridLayout()
+        self.layout.addWidget(invite_label, 0, 0)
+        self.layout.addWidget(self.category_combo(), 1, 0)
+        self.layout.addWidget(ok_button, 2, 0)
+        self.setLayout(self.layout)
+
+        ok_button.clicked.connect(self.on_ok_button_click)
+
+    def category_combo(self):
+        self.combo_cor = QtWidgets.QComboBox()
+        for i in self.categoryes:
+            self.combo_cor.addItem(f"{i}")
+        return self.combo_cor
+
+    def on_ok_button_click(self):
+        text = self.combo_cor.currentText()
+        self.par.expenses_table.setItem(
+            self.ro,
+            self.col,
+            QtWidgets.QTableWidgetItem(text),
+        )
+
+
 class CategoryWindow(QtWidgets.QWidget):
     """
     This "window" is a QWidget. If it has no parent, it
@@ -111,6 +147,80 @@ class CategoryWindow(QtWidgets.QWidget):
         return self.category_input_field
 
 
+class DayChangeWindow(QtWidgets.QWidget):
+
+    def __init__(self, parent, ro, col):
+        super().__init__()
+        self.par = parent
+        self.ro = ro
+        self.col = col
+        self.correct_day()
+
+    def correct_day(self):
+        invite_label = QtWidgets.QLabel("Выберите дату")
+        day_label = QtWidgets.QLabel("Введите день")
+        month_label = QtWidgets.QLabel("Выберите месяц")
+        year_label = QtWidgets.QLabel("Введите год")
+        ok_button = QtWidgets.QPushButton("ok")
+
+        self.layout = QtWidgets.QGridLayout()
+        self.layout.addWidget(invite_label, 0, 0)
+        self.layout.addWidget(day_label, 2, 0)
+        self.layout.addWidget(month_label, 1, 0)
+        self.layout.addWidget(year_label, 3, 0)
+        self.layout.addWidget(self.month_combo(), 1, 1)
+        self.layout.addWidget(self.day_input(), 2, 1)
+        self.layout.addWidget(self.year_input(), 3, 1)
+        self.layout.addWidget(ok_button, 4, 1)
+
+        self.setLayout(self.layout)
+
+        ok_button.clicked.connect(self.on_ok_button_click)
+
+    def on_ok_button_click(self):
+        day = self.text_day.text()
+        month = self.combo_month.currentText()
+        year = self.text_year.text()
+        if check_float(day) is None or check_float(year) is None:
+            dlg = QtWidgets.QErrorMessage()
+            dlg.showMessage("День и год должны быть введены в числовом формате.\n")
+            dlg.setWindowTitle("Ошибка")
+            dlg.resize(200, 50)
+            dlg.exec()
+
+        elif len(year) != 4:
+            dlg = QtWidgets.QErrorMessage()
+            dlg.showMessage(
+                'Год должен быть введен в формате 4 цифр, например, "2024".\n'
+            )
+            dlg.setWindowTitle("Ошибка")
+            dlg.resize(200, 50)
+            dlg.exec()
+        else:
+            if int(day) < 10:
+                day = str(f"0{int(day)}")
+            self.par.expenses_table.setItem(
+                self.ro, self.col, QtWidgets.QTableWidgetItem(f"{day}/{month}/{year}")
+            )
+
+    def month_combo(self):
+        self.combo_month = QtWidgets.QComboBox()
+        months = [i for i in range(1, 13)]
+        for i in months:
+            if int(i) < 10:
+                i = str(f"0{i}")
+            self.combo_month.addItem(f"{i}")
+        return self.combo_month
+
+    def day_input(self):
+        self.text_day = QtWidgets.QLineEdit("")
+        return self.text_day
+
+    def year_input(self):
+        self.text_year = QtWidgets.QLineEdit("")
+        return self.text_year
+
+
 class BudgetWindow(QtWidgets.QWidget):
     """
     This "window" is a QWidget. If it has no parent, it
@@ -172,7 +282,7 @@ class BudgetWindow(QtWidgets.QWidget):
         else:
             dlg = QtWidgets.QErrorMessage()
             dlg.showMessage("Бюджет на день должен быть введен в числовом формате.\n")
-            dlg.setWindowTitle("QDialog")
+            dlg.setWindowTitle("Ошибка")
             dlg.resize(200, 50)
             dlg.exec()
             self.success_day_label.setText(f"")
@@ -193,7 +303,7 @@ class BudgetWindow(QtWidgets.QWidget):
         else:
             dlg = QtWidgets.QErrorMessage()
             dlg.showMessage("Бюджет на неделю должен быть введен в числовом формате.\n")
-            dlg.setWindowTitle("QDialog")
+            dlg.setWindowTitle("Ошибка")
             dlg.resize(200, 50)
             dlg.exec()
             self.success_week_label.setText(f"")
@@ -214,7 +324,7 @@ class BudgetWindow(QtWidgets.QWidget):
         else:
             dlg = QtWidgets.QErrorMessage()
             dlg.showMessage("Бюджет на месяц должен быть введен в числовом формате.\n")
-            dlg.setWindowTitle("QDialog")
+            dlg.setWindowTitle("Ошибка")
             dlg.resize(200, 50)
             dlg.exec()
             self.success_month_label.setText(f"")
@@ -241,6 +351,10 @@ class MainWindow(QtWidgets.QWidget):
 
     def init_ui(self):
         expenses_label = QtWidgets.QLabel("Расходы")
+        help_label = QtWidgets.QLabel(
+            "Help: Чтобы редактировать расходы, кликните дважды на желаемую ячейку в таблице расходов"
+        )
+
         self.status_label = QtWidgets.QLabel(" ")
         control_label = QtWidgets.QLabel("Бюджет")
         add_button = QtWidgets.QPushButton("Добавить расход")
@@ -274,6 +388,7 @@ class MainWindow(QtWidgets.QWidget):
         self.layout.addWidget(correct_budget_button, 7, 0, 1, 1)
         self.layout.addWidget(correct_category_button, 7, 1, 1, 1)
         self.layout.addWidget(correct_list_button, 7, 2, 1, 1)
+        self.layout.addWidget(help_label, 8, 0, 1, -1)
 
         self.setLayout(self.layout)
 
@@ -281,25 +396,81 @@ class MainWindow(QtWidgets.QWidget):
         correct_budget_button.clicked.connect(self.on_budget_button_click)
         correct_category_button.clicked.connect(self.on_category_button_click)
         # self.control_table.cellClicked.connect(self.on_control_cell_click)
-        # self.expenses_table.cellChanged.connect(self.control_cell_change)
+        self.expenses_table.cellDoubleClicked.connect(self.expenses_cell_change)
         self.setWindowTitle("The Bookkeeper App")
         self.setGeometry(900, 100, 700, 500)
 
     # def on_control_cell_click(self, row, column):
     #     self.prev_item = self.control_table.item(row, column)
 
-    # def control_cell_change(self, row, column):
-    #     self.new_item = self.control_table.item(row, column)
-    #     if self.new_item is None:
-    #         self.control_table.setItem(row, column, self.prev_item)
-    #     elif check_float(self.new_item.text()) is None:
-    #         self.control_table.setItem(
-    #             row, column, QtWidgets.QTableWidgetItem(str(self.prev_item.text()))
-    #         )
-    # else:
-    #     self.control_table.setItem(
-    #         row, column, QtWidgets.QTableWidgetItem(self.new_item.text())
-    #     )
+    def expenses_cell_change(self, row, column):
+        # self.current_item = self.expenses_table.currentItem()
+        # try: #TODO почему ошибка?
+        #     self.expenses_table.item(row=row, column = 1)
+        # except TypeError:
+        #     dlg = QtWidgets.QErrorMessage()
+        #     dlg.showMessage("Этой записи пока не существует.\n")
+        #     dlg.setWindowTitle("Ошибка")
+        #     dlg.resize(200, 50)
+        #     dlg.exec()
+        #     return None
+        # if False:
+        #     pass
+        # self.expenses_table.item(row=row, column = 1)
+        if column == 0:
+            self.day_changing(row, column)
+        if column == 1:
+            self.summa_changing(row, column)
+        if column == 2:
+            self.category_changing(row, column)
+        if column == 3:
+            self.comment_changing(row, column)
+
+    def day_changing(self, row, column):
+        self.day_change_win = DayChangeWindow(self, row, column)
+        self.day_change_win.show()
+
+    def summa_changing(self, ro, col):
+        text, ok = QtWidgets.QInputDialog.getMultiLineText(
+            self,
+            "Изменить сумму расхода",
+            "" "Введите новую сумму расхода:",
+            "",
+        )
+        if check_float(text) is None:
+            dlg = QtWidgets.QErrorMessage()
+            dlg.showMessage("Сумма должна быть введена в числовом формате.\n")
+            dlg.setWindowTitle("Ошибка")
+            dlg.resize(200, 50)
+            dlg.exec()
+        elif ok and text:
+            self.expenses_table.setItem(
+                ro,
+                col,
+                QtWidgets.QTableWidgetItem(text),
+            )
+
+    def category_changing(self, row, column):
+        count = self.combo.count()
+        categoryes = [self.combo.itemText(i) for i in range(count)]
+        self.category_change_win = CategoryChangeWindow(
+            self, categoryes=categoryes, ro=row, col=column
+        )
+        self.category_change_win.show()
+
+    def comment_changing(self, ro, col):
+        text, ok = QtWidgets.QInputDialog.getMultiLineText(
+            self,
+            "Дабавить комментарий к записи",
+            "" "Введите комментарий к записи:",
+            "",
+        )
+        if ok and text:
+            self.expenses_table.setItem(
+                ro,
+                col,
+                QtWidgets.QTableWidgetItem(text),
+            )
 
     def on_add_button_click(self):
         category_text = str(self.reading_combobox())
@@ -307,7 +478,7 @@ class MainWindow(QtWidgets.QWidget):
         if check_float(sum_text) is None:
             dlg = QtWidgets.QErrorMessage()
             dlg.showMessage("Сумма должна быть введена в числовом формате.\n")
-            dlg.setWindowTitle("QDialog")
+            dlg.setWindowTitle("Ошибкаа")
             dlg.resize(200, 50)
             dlg.exec()
         else:
@@ -329,8 +500,8 @@ class MainWindow(QtWidgets.QWidget):
         self.w.show()
 
     def on_budget_button_click(self):
-        self.b = BudgetWindow(self)
-        self.b.show()
+        self.budg_win = BudgetWindow(self)
+        self.budg_win.show()
 
     def expenses_table_func(self):
         self.expenses_table = QtWidgets.QTableWidget(4, 20)
@@ -346,6 +517,7 @@ class MainWindow(QtWidgets.QWidget):
         header.setSectionResizeMode(3, QtWidgets.QHeaderView.Stretch)
         self.expenses_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.expenses_table.verticalHeader().hide()
+
         return self.expenses_table
 
     def control_table_func(self):
