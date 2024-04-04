@@ -11,39 +11,39 @@ def check_float(text: str) -> float | None:
         return None
 
 
-class PandasModel(QtCore.QAbstractTableModel):
-    def __init__(self, data):
-        super().__init__()
-        self._data = data
+# class PandasModel(QtCore.QAbstractTableModel):
+#     def __init__(self, data):
+#         super().__init__()
+#         self._data = data
 
-    def rowCount(self, index):
-        # The length of the outer list.
-        return len(self._data)
+#     def rowCount(self, index):
+#         # The length of the outer list.
+#         return len(self._data)
 
-    def columnCount(self, index):
-        # The following takes the first sub-list, and returns
-        # the length (only works if all rows are an equal length)
-        return len(self._data[0])
+#     def columnCount(self, index):
+#         # The following takes the first sub-list, and returns
+#         # the length (only works if all rows are an equal length)
+#         return len(self._data[0])
 
-    def data(self, index, role=QtCore.Qt.DisplayRole):
-        if index.isValid():
-            if role == Qt.DisplayRole or role == QtCore.Qt.EditRole:
-                value = self._data[index.row()][index.column()]
-                return str(value)
+#     def data(self, index, role=QtCore.Qt.DisplayRole):
+#         if index.isValid():
+#             if role == Qt.DisplayRole or role == QtCore.Qt.EditRole:
+#                 value = self._data[index.row()][index.column()]
+#                 return str(value)
 
-    def setData(self, index, value, role):
-        if role == QtCore.Qt.EditRole:
-            if check_float(value) is not None:
-                self._data[index.row()][index.column()] = value
-                return True
-        return False
+#     def setData(self, index, value, role):
+#         if role == QtCore.Qt.EditRole:
+#             if check_float(value) is not None:
+#                 self._data[index.row()][index.column()] = value
+#                 return True
+#         return False
 
-    def flags(self, index):
-        return (
-            QtCore.Qt.ItemIsSelectable
-            | QtCore.Qt.ItemIsEnabled
-            | QtCore.Qt.ItemIsEditable
-        )
+#     def flags(self, index):
+#         return (
+#             QtCore.Qt.ItemIsSelectable
+#             | QtCore.Qt.ItemIsEnabled
+#             | QtCore.Qt.ItemIsEditable
+#         )
 
 
 class CategoryChangeWindow(QtWidgets.QWidget):
@@ -362,7 +362,7 @@ class MainWindow(QtWidgets.QWidget):
         category_label = QtWidgets.QLabel("Категория")
         correct_budget_button = QtWidgets.QPushButton("Редактировать бюджет")
         correct_category_button = QtWidgets.QPushButton("Редактировать категории")
-        correct_list_button = QtWidgets.QPushButton("Редактировать записи")
+        # correct_list_button = QtWidgets.QPushButton("Редактировать записи")
 
         self.layout = QtWidgets.QGridLayout()
         self.layout.addWidget(expenses_label, 0, 0)
@@ -387,7 +387,7 @@ class MainWindow(QtWidgets.QWidget):
 
         self.layout.addWidget(correct_budget_button, 7, 0, 1, 1)
         self.layout.addWidget(correct_category_button, 7, 1, 1, 1)
-        self.layout.addWidget(correct_list_button, 7, 2, 1, 1)
+        # self.layout.addWidget(correct_list_button, 7, 2, 1, 1)
         self.layout.addWidget(help_label, 8, 0, 1, -1)
 
         self.setLayout(self.layout)
@@ -405,26 +405,21 @@ class MainWindow(QtWidgets.QWidget):
 
     def expenses_cell_change(self, row, column):
         # self.current_item = self.expenses_table.currentItem()
-        # try: #TODO почему ошибка?
-        #     self.expenses_table.item(row=row, column = 1)
-        # except TypeError:
-        #     dlg = QtWidgets.QErrorMessage()
-        #     dlg.showMessage("Этой записи пока не существует.\n")
-        #     dlg.setWindowTitle("Ошибка")
-        #     dlg.resize(200, 50)
-        #     dlg.exec()
-        #     return None
-        # if False:
-        #     pass
-        # self.expenses_table.item(row=row, column = 1)
-        if column == 0:
-            self.day_changing(row, column)
-        if column == 1:
-            self.summa_changing(row, column)
-        if column == 2:
-            self.category_changing(row, column)
-        if column == 3:
-            self.comment_changing(row, column)
+        if self.expenses_table.item(row, 0) is None:
+            dlg = QtWidgets.QErrorMessage()
+            dlg.showMessage("Этой записи пока не существует.\n")
+            dlg.setWindowTitle("Ошибка")
+            dlg.resize(200, 50)
+            dlg.exec()
+        else:
+            if column == 0:
+                self.day_changing(row, column)
+            if column == 1:
+                self.summa_changing(row, column)
+            if column == 2:
+                self.category_changing(row, column)
+            if column == 3:
+                self.comment_changing(row, column)
 
     def day_changing(self, row, column):
         self.day_change_win = DayChangeWindow(self, row, column)
@@ -482,10 +477,16 @@ class MainWindow(QtWidgets.QWidget):
             dlg.resize(200, 50)
             dlg.exec()
         else:
-            self.expenses_table.setItem(0, 1, QtWidgets.QTableWidgetItem(sum_text))
-            self.expenses_table.setItem(0, 2, QtWidgets.QTableWidgetItem(category_text))
+            row_count = 0
+            while self.expenses_table.item(row_count, 0) is not None:
+                row_count +=1
+            # row_count = self.expenses_table.rowCount()
+            print(row_count)
+            self.expenses_table.setItem(row_count, 1, QtWidgets.QTableWidgetItem(sum_text))
+            self.expenses_table.setItem(row_count, 2, QtWidgets.QTableWidgetItem(category_text))
+
             self.expenses_table.setItem(
-                0,
+                row_count,
                 0,
                 QtWidgets.QTableWidgetItem(
                     str(datetime.date.today().strftime("%d/%m/%Y"))
@@ -504,9 +505,9 @@ class MainWindow(QtWidgets.QWidget):
         self.budg_win.show()
 
     def expenses_table_func(self):
-        self.expenses_table = QtWidgets.QTableWidget(4, 20)
+        self.expenses_table = QtWidgets.QTableWidget(4, 1000)
         self.expenses_table.setColumnCount(4)
-        self.expenses_table.setRowCount(20)
+        self.expenses_table.setRowCount(1000)
         self.expenses_table.setHorizontalHeaderLabels(
             "Дата Сумма Категория Комментарий".split()
         )
