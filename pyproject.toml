@@ -9,7 +9,7 @@ packages = [{include = "bookkeeper"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.12"
-pyside6 = "^6.4.2.0"
+pyside6-stubs = "^6.4.2.0"
 pytest-cov = "^4.0.0"
 
 
