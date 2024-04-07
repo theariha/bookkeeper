@@ -12,6 +12,8 @@ python = ">=3.10,<3.12"
 pyside6-stubs = "^6.4.2.0"
 pytest-cov = "^4.0.0"
 
+[tool.poetry.scripts]
+gui = "bookkeeper.presenter:main"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
