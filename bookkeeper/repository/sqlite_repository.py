@@ -1,7 +1,8 @@
 import sqlite3
 import inspect
-from typing import Any, cast
+from typing import Any, cast, Optional
 from bookkeeper.repository.abstract_repository import AbstractRepository, T
+import datetime
 
 
 class SQliteRepository(AbstractRepository[T]):
@@ -33,10 +34,14 @@ class SQliteRepository(AbstractRepository[T]):
     def _py_to_sql(self, tpy: type) -> str:
         if tpy == int:
             return "INTEGER"
+        if tpy == Optional[int]:
+            return "INTEGER"
         if tpy == str:
             return "TEXT"
         if tpy == float:
             return "REAL"
+        if tpy == datetime.timedelta or datetime.datetime:
+            return "DATE"
         raise ValueError(f"Type {tpy} is not supported")
 
     def add(self, obj: T) -> int:
