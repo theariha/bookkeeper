@@ -55,30 +55,27 @@ class CategoryChangeWindow(QtWidgets.QWidget):
 
     def _on_ok_button_click(self) -> None:
         text = self.combo_cor.currentText()
-        index = self.combo_cor.currentIndex()
         self.par.expenses_table.setItem(
             self.ro,
             self.col,
             QtWidgets.QTableWidgetItem(text),
         )
-        summ = float(self.par.expenses_table.item(self.ro, 1).text())
+        summ = int(self.par.expenses_table.item(self.ro, 1).text())
         cat = text
         date = datetime.datetime.strptime(
             self.par.expenses_table.item(self.ro, 0).text(), "%Y-%m-%d %H:%M:%S"
         )
         comm = self.par.expenses_table.item(self.ro, 3)
         if comm is None:
-            comm = ""
+            comment = ""
         else:
-            comm = comm.text()
+            comment = comm.text()
         self.par.handler_expense_changer(
-            Expense(
-                amount=summ,
-                category=cat,
-                expense_date=date,
-                comment=comm,
-                pk=self.ro + 1,
-            )
+            summ,
+            cat,
+            date,
+            comment,
+            self.ro + 1,
         )
 
 
@@ -219,21 +216,19 @@ class DayChangeWindow(QtWidgets.QWidget):
                 QtWidgets.QTableWidgetItem(date.strftime("%Y-%m-%d %H:%M:%S")),
             )
 
-            summ = float(self.par.expenses_table.item(self.ro, 1).text())
+            summ = int(self.par.expenses_table.item(self.ro, 1).text())
             cat = self.par.expenses_table.item(self.ro, 2).text()
             comm = self.par.expenses_table.item(self.ro, 3)
             if comm is None:
-                comm = ""
+                comment = ""
             else:
-                comm = comm.text()
+                comment = comm.text()
             self.par.handler_expense_changer(
-                Expense(
-                    amount=summ,
-                    category=cat,
-                    expense_date=date,
-                    comment=comm,
-                    pk=self.ro + 1,
-                )
+                summ,
+                cat,
+                date,
+                comment,
+                self.ro + 1,
             )
 
     def _month_combo(self) -> QtWidgets.QWidget:
@@ -440,38 +435,42 @@ class MainWindow(QtWidgets.QWidget):
         self.setWindowTitle("The Bookkeeper App")
         self.setGeometry(900, 100, 700, 500)
 
-    def do_show(self):
+    def do_show(self) -> None:
         self.show()
         self.app.exec_()
 
     # def on_control_cell_click(self, row, column):
     #     self.prev_item = self.control_table.item(row, column)
 
-    def expense_change_handler(self, handler: Callable[[Expense], None]):
+    def expense_change_handler(
+        self, handler: Callable[[int, str, datetime.datetime, str, int], None]
+    ) -> None:
         """
         Изменяет некоторые параметры записи расходов
         """
         self.handler_expense_changer = handler
 
-    def expense_add_handler(self, handler: Callable[[Expense], None]):
+    def expense_add_handler(
+        self, handler: Callable[[int, str, datetime.datetime], None]
+    ) -> None:
         """
         Добавляет новую запись расходов
         """
         self.handler_expense_adder = handler
 
-    def delete_category_handler(self, handler: Callable[[str], None]):
+    def delete_category_handler(self, handler: Callable[[str], None]) -> None:
         """
         Удаляет категорию из списка каатегорий
         """
         self.handler_del = handler
 
-    def add_category_handler(self, handler: Callable[[Category], None]):
+    def add_category_handler(self, handler: Callable[[Category], None]) -> None:
         """
         Добавляет новую каатегорию в список каатегорий
         """
         self.handler_add = handler
 
-    def budget_change_handler(self, handler: Callable[[Budget], None]):
+    def budget_change_handler(self, handler: Callable[[Budget], None]) -> None:
         """
         Изменяет установленный бюджет на период
         """
@@ -508,7 +507,7 @@ class MainWindow(QtWidgets.QWidget):
             self.expenses_table.setItem(row, 3, QtWidgets.QTableWidgetItem(exp.comment))
             row += 1
 
-    def set_summ(self, summs):
+    def set_summ(self, summs: list[float]) -> None:
         for i, summ in enumerate(summs):
             self.control_table.setItem(i, 0, QtWidgets.QTableWidgetItem(str(summ)))
 
@@ -559,17 +558,15 @@ class MainWindow(QtWidgets.QWidget):
 
             comm = self.expenses_table.item(row, 3)
             if comm is None:
-                comm = ""
+                comment = ""
             else:
-                comm = comm.text()
+                comment = comm.text()
             self.handler_expense_changer(
-                Expense(
-                    amount=float(text),
-                    category=self.expenses_table.item(row, 2).text(),
-                    expense_date=date,
-                    comment=comm,
-                    pk=row + 1,
-                )
+                int(text),
+                self.expenses_table.item(row, 2).text(),
+                date,
+                comment,
+                row + 1,
             )
 
     def _category_changing(self, row: int, column: int) -> None:
@@ -597,13 +594,11 @@ class MainWindow(QtWidgets.QWidget):
             date = datetime.datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
 
             self.handler_expense_changer(
-                Expense(
-                    amount=float(self.expenses_table.item(row, 1).text()),
-                    category=self.expenses_table.item(row, 2).text(),
-                    expense_date=date,
-                    comment=text,
-                    pk=row + 1,
-                )
+                int(self.expenses_table.item(row, 1).text()),
+                self.expenses_table.item(row, 2).text(),
+                date,
+                text,
+                row + 1,
             )
 
     def _on_add_button_click(self) -> None:
@@ -635,12 +630,9 @@ class MainWindow(QtWidgets.QWidget):
 
             self.status_label.setText("Расходы добавлены")
             self.handler_expense_adder(
-                Expense(
-                    amount=float(sum_text),
-                    category=category_text,
-                    expense_date=date,
-                    # pk=row_count,
-                )
+                int(sum_text),
+                category_text,
+                date,
             )
 
     def _on_category_button_click(self) -> None:

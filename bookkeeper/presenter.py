@@ -11,55 +11,60 @@ from bookkeeper.repository.abstract_repository import AbstractRepository
 
 
 class AbstractView(Protocol):
-    def __init__(self):
+
+    def __init__(self) -> None:
         pass
 
     def init_ui(self) -> None:
         pass
 
-    def expense_change_handler(self, handler: Callable[[Expense], None]):
+    def expense_change_handler(
+        self, handler: Callable[[int, str, datetime, str, int], None]
+    ) -> None:
         """
         Изменяет некоторые параметры записи расходов
         """
         pass
 
-    def expense_add_handler(self, handler: Callable[[Expense], None]):
+    def expense_add_handler(
+        self, handler: Callable[[int, str, datetime], None]
+    ) -> None:
         """
         Добавляет новую запись расходов
         """
         pass
 
-    def delete_category_handler(self, handler: Callable[[str], None]):
+    def delete_category_handler(self, handler: Callable[[str], None]) -> None:
         """
         Удаляет категорию из списка категорий
         """
         pass
 
-    def add_category_handler(self, handler: Callable[[Category], None]):
+    def add_category_handler(self, handler: Callable[[Category], None]) -> None:
         """
         Добавляет новую категорию в список категорий
         """
         pass
 
-    def budget_change_handler(self, handler: Callable[[Budget], None]):
+    def budget_change_handler(self, handler: Callable[[Budget], None]) -> None:
         """
         Изменяет установленный бюджет на период
         """
         pass
 
-    def set_budget(self, budgets: list[Budget]):
+    def set_budget(self, budgets: list[Budget]) -> None:
         pass
 
-    def set_categories(self, categories: list[Category]):
+    def set_categories(self, categories: list[Category]) -> None:
         pass
 
-    def set_expense_list(self, expenses: list[Expense]):
+    def set_expense_list(self, expenses: list[Expense]) -> None:
         pass
 
-    def set_summ(self, summs: list[float]):
+    def set_summ(self, summs: list[float]) -> None:
         pass
 
-    def do_show(self):
+    def do_show(self) -> None:
         pass
 
 
@@ -75,7 +80,7 @@ class Bookkeeper:
         self.day_budg = 1000
         self.week_budg = 3000
         self.month_budg = 10000
-        self.budgets: [Budget]
+        self.budgets: list[Budget]
 
         self.month_summ = 0
         self.week_summ = 0
@@ -134,7 +139,7 @@ class Bookkeeper:
         self.week_summ = 0
         self.month_summ = 0
         expenses = self.expense_repository.get_all()
-        if len(expenses) !=0:
+        if len(expenses) != 0:
             today = date.today()
             week = today - timedelta(7)
             month = today - timedelta(31)
@@ -149,11 +154,26 @@ class Bookkeeper:
         summs = list(map(float, [self.day_summ, self.week_summ, self.month_summ]))
         self.view.set_summ(summs)
 
-    def change_expense(self, exp: Expense) -> None:
+    def change_expense(
+        self,
+        amount: int,
+        cat: str,
+        date: datetime,
+        com: str,
+        pk: int,
+    ) -> None:
+        cat_list = self.category_repository.get_all({"name": cat})
+        assert len(cat_list) == 1
+        prim_key = cat_list[0].pk
+        exp = Expense(amount, prim_key, date, comment=com, pk=pk)
         self.expense_repository.update(exp)
         self.set_summ()
 
-    def add_expense(self, exp: Expense) -> None:
+    def add_expense(self, amount: int, cat: str, date: datetime) -> None:
+        cat_list = self.category_repository.get_all({"name": cat})
+        assert len(cat_list) == 1
+        prim_key = cat_list[0].pk
+        exp = Expense(amount, prim_key, date)
         self.expense_repository.add(exp)
         self.set_summ()
 
@@ -176,7 +196,7 @@ def main() -> int:
     budget_repo = SQliteRepository[Budget]("bookkeper.db", Budget)
     expense_repo = SQliteRepository[Expense]("bookkeper.db", Expense)
 
-    book = Bookkeeper(main_window, cat_repo, budget_repo, expense_repo)
+    Bookkeeper(main_window, cat_repo, budget_repo, expense_repo)
     return 0
 
 
