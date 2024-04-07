@@ -3,7 +3,7 @@
 """
 
 import sys
-from datetime import datetime
+import datetime
 from PySide6 import QtWidgets, QtCore
 from typing import Callable
 from bookkeeper.models.category import Category
@@ -63,12 +63,9 @@ class CategoryChangeWindow(QtWidgets.QWidget):
         )
         summ = float(self.par.expenses_table.item(self.ro, 1).text())
         cat = text
-        date = self.par.expenses_table.item(self.ro, 0).text()
-        date = datetime(
-            int(date[0:4]),
-            int(date[5:7]),
-            int(date[8:10]),
-            )
+        date = datetime.datetime.strptime(
+            self.par.expenses_table.item(self.ro, 0).text(), "%Y-%m-%d %H:%M:%S"
+        )
         comm = self.par.expenses_table.item(self.ro, 3)
         if comm is None:
             comm = ""
@@ -207,7 +204,7 @@ class DayChangeWindow(QtWidgets.QWidget):
             dlg.resize(200, 50)
             dlg.exec()
         try:
-            datetime(int(year), int(month), int(day))
+            datetime.datetime(int(year), int(month), int(day))
         except ValueError:
             dlg = QtWidgets.QErrorMessage()
             dlg.showMessage("В выбранном вами месяце нет введенного дня.\n")
@@ -215,16 +212,15 @@ class DayChangeWindow(QtWidgets.QWidget):
             dlg.resize(200, 50)
             dlg.exec()
         else:
-            if int(day) < 10:
-                day = str(f"0{int(day)}")
+            date = datetime.datetime(int(year), int(month), int(day))
             self.par.expenses_table.setItem(
-                self.ro, self.col, QtWidgets.QTableWidgetItem(f"{year}-{month}-{day}")
+                self.ro,
+                self.col,
+                QtWidgets.QTableWidgetItem(date.strftime("%Y-%m-%d %H:%M:%S")),
             )
 
             summ = float(self.par.expenses_table.item(self.ro, 1).text())
             cat = self.par.expenses_table.item(self.ro, 2).text()
-            date = f"{year}-{month}-{day}"
-            date = datetime(int(date[0:4]), int(date[5:7]), int(date[8:10]))
             comm = self.par.expenses_table.item(self.ro, 3)
             if comm is None:
                 comm = ""
@@ -501,11 +497,8 @@ class MainWindow(QtWidgets.QWidget):
         while self.expenses_table.item(row, 0) is not None:
             row += 1
         for exp in expenses:
-            date = str(exp.expense_date)
-            date = f"{date[0:4]}-{date[5:7]}-{date[8:10]}"
-            self.expenses_table.setItem(
-                row, 0, QtWidgets.QTableWidgetItem(date)
-            )
+            date = exp.expense_date.strftime("%Y-%m-%d %H:%M:%S")
+            self.expenses_table.setItem(row, 0, QtWidgets.QTableWidgetItem(date))
             self.expenses_table.setItem(
                 row, 1, QtWidgets.QTableWidgetItem(str(exp.amount))
             )
@@ -560,13 +553,10 @@ class MainWindow(QtWidgets.QWidget):
                 column,
                 QtWidgets.QTableWidgetItem(text),
             )
-            date = str(self.expenses_table.item(row, 0).text())
-            
-            date = datetime(
-                int(date[0:4]),
-                int(date[5:7]),
-                int(date[8:10]),
-                )
+            date = datetime.datetime.strptime(
+                self.expenses_table.item(row, 0).text(), "%Y-%m-%d %H:%M:%S"
+            )
+
             comm = self.expenses_table.item(row, 3)
             if comm is None:
                 comm = ""
@@ -603,12 +593,8 @@ class MainWindow(QtWidgets.QWidget):
                 column,
                 QtWidgets.QTableWidgetItem(text),
             )
-            date = str(self.expenses_table.item(row, 0).text())
-            date = datetime(
-                int(date[0:4]),
-                int(date[5:7]),
-                int(date[8:10]),
-                )
+            val = self.expenses_table.item(row, 0).text()
+            date = datetime.datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
 
             self.handler_expense_changer(
                 Expense(
@@ -640,18 +626,13 @@ class MainWindow(QtWidgets.QWidget):
             self.expenses_table.setItem(
                 row_count, 2, QtWidgets.QTableWidgetItem(category_text)
             )
-            date = datetime(
-                datetime.now().year,
-                datetime.now().month,
-                datetime.now().day,
-            )
+            date = datetime.datetime.now()
             self.expenses_table.setItem(
                 row_count,
                 0,
-                QtWidgets.QTableWidgetItem(
-                    str(f"{str(date)[0:4]}-{str(date)[5:7]}-{str(date)[8:10]}")
-                    )
-                )
+                QtWidgets.QTableWidgetItem(date.strftime("%Y-%m-%d %H:%M:%S")),
+            )
+
             self.status_label.setText("Расходы добавлены")
             self.handler_expense_adder(
                 Expense(

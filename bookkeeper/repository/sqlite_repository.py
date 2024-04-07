@@ -40,9 +40,20 @@ class SQliteRepository(AbstractRepository[T]):
             return "TEXT"
         if tpy == float:
             return "REAL"
-        if tpy == datetime.timedelta or datetime.datetime:
-            return "DATE"
+        if tpy == datetime.datetime:
+            return "TEXT"
         raise ValueError(f"Type {tpy} is not supported")
+
+    def _val_from_sql(self, tpy: type, val: Any) -> Any:
+        if tpy is datetime.datetime:
+            return datetime.datetime.strptime(val, "%Y-%m-%d %H:%M:%S")
+        return val
+
+    def _val_to_sql(self, val: Any) -> Any:
+        if isinstance(val, datetime.datetime):
+            return val.strftime("%Y-%m-%d %H:%M:%S")
+
+        return val
 
     def add(self, obj: T) -> int:
         if getattr(obj, "pk", None) != 0:
@@ -51,7 +62,7 @@ class SQliteRepository(AbstractRepository[T]):
         names = ", ".join(self._fields)
         placeholders = ", ".join("?" * len(self._fields))
 
-        values = [getattr(obj, key) for key in self._fields]
+        values = [self._val_to_sql(getattr(obj, key)) for key in self._fields]
 
         with sqlite3.connect(self._base_name) as con:
             cur = con.cursor()
@@ -81,8 +92,8 @@ class SQliteRepository(AbstractRepository[T]):
             return None
         obj = self._class_type()
         setattr(obj, "pk", res[0])
-        for i, name in enumerate(self._fields, 1):
-            setattr(obj, name, res[i])
+        for i, (name, tpy) in enumerate(self._fields.items(), 1):
+            setattr(obj, name, self._val_from_sql(tpy, res[i]))
         assert isinstance(obj, self._class_type)
         return cast(T, obj)
 
@@ -110,8 +121,8 @@ class SQliteRepository(AbstractRepository[T]):
         for element in res:
             obj = self._class_type()
             setattr(obj, "pk", element[0])
-            for j, name in enumerate(self._fields, 1):
-                setattr(obj, name, element[j])
+            for j, (name, tpy) in enumerate(self._fields.items(), 1):
+                setattr(obj, name, self._val_from_sql(tpy, element[j]))
             out.append(obj)
         return out
 
@@ -123,7 +134,7 @@ class SQliteRepository(AbstractRepository[T]):
         names = ", ".join(self._fields)
         placeholders = ", ".join("?" * len(self._fields))
 
-        values = [getattr(obj, key) for key in self._fields]
+        values = [self._val_to_sql(getattr(obj, key)) for key in self._fields]
 
         with sqlite3.connect(self._base_name) as con:
             cur = con.cursor()

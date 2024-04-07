@@ -1,8 +1,7 @@
 import sys
 
 from typing import Protocol, Callable
-import datetime
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from bookkeeper.models.category import Category
 from bookkeeper.models.expense import Expense
 from bookkeeper.models.budget import Budget
@@ -57,7 +56,7 @@ class AbstractView(Protocol):
     def set_expense_list(self, expenses: list[Expense]):
         pass
 
-    def set_sum(self, summs: list[float]):
+    def set_summ(self, summs: list[float]):
         pass
 
     def do_show(self):
@@ -72,7 +71,7 @@ class Bookkeeper:
         category_repository: AbstractRepository[Category],
         budget_repository: AbstractRepository[Budget],
         expense_repository: AbstractRepository[Expense],
-    ):
+    ) -> None:
         self.day_budg = 1000
         self.week_budg = 3000
         self.month_budg = 10000
@@ -102,19 +101,18 @@ class Bookkeeper:
         self.set_summ()
         self.view.do_show()
 
-    def set_budget(self):
-        if self.budget_repository.get_all() is None:
+    def set_budget(self) -> None:
+        self.budgets = self.budget_repository.get_all()
+        if len(self.budgets) == 0:
             budg_for_day = Budget(self.day_budg, 1)
             budg_for_week = Budget(self.week_budg, 7)
             budg_for_month = Budget(self.month_budg, 31)
             self.budgets = [budg_for_day, budg_for_week, budg_for_month]
             for budgs in self.budgets:
                 self.budget_repository.add(budgs)
-        else:
-            self.budgets = self.budget_repository.get_all()
         self.view.set_budget(self.budgets)
 
-    def set_categories(self):
+    def set_categories(self) -> None:
         categories = self.category_repository.get_all()
         if len(categories) == 0:
             transport_cat = Category("Транспорт")
@@ -125,77 +123,58 @@ class Bookkeeper:
                 self.category_repository.add(cat)
         self.view.set_categories(categories)
 
-    def set_expense_list(self):
-        if self.expense_repository.get_all() is not None:
+    def set_expense_list(self) -> None:
+        expenses = self.expense_repository.get_all()
+        if len(expenses) == 0:
             expenses = self.expense_repository.get_all()
         self.view.set_expense_list(expenses)
 
-    def set_summ(self):
+    def set_summ(self) -> None:
         self.day_summ = 0
         self.week_summ = 0
         self.month_summ = 0
-        if self.expense_repository.get_all() is not None:
-            expenses = self.expense_repository.get_all()
-            today = datetime(datetime.now().year, datetime.now().month, datetime.now().day)
+        expenses = self.expense_repository.get_all()
+        if len(expenses) !=0:
+            today = date.today()
             week = today - timedelta(7)
             month = today - timedelta(31)
             for exp in expenses:
-                if (
-                    datetime(
-                        int(exp.expense_date[0:4]),
-                        int(exp.expense_date[5:7]),
-                        int(exp.expense_date[8:10]),
-                    )
-                    >= month
-                ):
+                exp_date = exp.expense_date.date()
+                if exp_date >= month:
                     self.month_summ += exp.amount
-                if (
-                    datetime(
-                        int(exp.expense_date[0:4]),
-                        int(exp.expense_date[5:7]),
-                        int(exp.expense_date[8:10]),
-                    )
-                    >= week
-                ):
+                if exp_date >= week:
                     self.week_summ += exp.amount
-                if (
-                    datetime(
-                        int(exp.expense_date[0:4]),
-                        int(exp.expense_date[5:7]),
-                        int(exp.expense_date[8:10]),
-                    )
-                    >= today
-                ):
+                if exp_date >= today:
                     self.day_summ += exp.amount
-        summs = [self.day_summ, self.week_summ, self.month_summ]
+        summs = list(map(float, [self.day_summ, self.week_summ, self.month_summ]))
         self.view.set_summ(summs)
 
-    def change_expense(self, exp: Expense):
+    def change_expense(self, exp: Expense) -> None:
         self.expense_repository.update(exp)
         self.set_summ()
 
-    def add_expense(self, exp: Expense):
+    def add_expense(self, exp: Expense) -> None:
         self.expense_repository.add(exp)
         self.set_summ()
 
-    def delete_category(self, name: str):
+    def delete_category(self, name: str) -> None:
         cat_list = self.category_repository.get_all({"name": name})
-        assert len(cat_list) ==1
+        assert len(cat_list) == 1
         prim_key = cat_list[0].pk
         self.category_repository.delete(prim_key)
 
-    def add_category(self, cat: Category):
+    def add_category(self, cat: Category) -> None:
         self.category_repository.add(cat)
 
-    def budget_change(self, budg: Budget):
+    def budget_change(self, budg: Budget) -> None:
         self.budget_repository.update(budg)
 
 
 def main() -> int:
     main_window = MainWindow()
-    cat_repo = SQliteRepository("bookkeper.db", Category)
-    budget_repo = SQliteRepository("bookkeper.db", Budget)
-    expense_repo = SQliteRepository("bookkeper.db", Expense)
+    cat_repo = SQliteRepository[Category]("bookkeper.db", Category)
+    budget_repo = SQliteRepository[Budget]("bookkeper.db", Budget)
+    expense_repo = SQliteRepository[Expense]("bookkeper.db", Expense)
 
     book = Bookkeeper(main_window, cat_repo, budget_repo, expense_repo)
     return 0
