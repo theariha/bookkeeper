@@ -58,13 +58,20 @@ class AbstractView(Protocol):
     def set_categories(self, categories: list[Category]) -> None:
         pass
 
-    def set_expense_list(self, expenses: list[Expense]) -> None:
+    def set_expense_list(
+        self,
+        expenses: list[Expense],
+        categories: dict[int, str],
+    ) -> None:
         pass
 
     def set_summ(self, summs: list[float]) -> None:
         pass
 
     def do_show(self) -> None:
+        pass
+
+    def clear_expense_table(self) -> None:
         pass
 
 
@@ -129,10 +136,13 @@ class Bookkeeper:
         self.view.set_categories(categories)
 
     def set_expense_list(self) -> None:
+        self.view.clear_expense_table()
         expenses = self.expense_repository.get_all()
-        if len(expenses) == 0:
-            expenses = self.expense_repository.get_all()
-        self.view.set_expense_list(expenses)
+        cat_list = self.category_repository.get_all()
+        categories = {}
+        for item in cat_list:
+            categories[item.pk] = item.name
+        self.view.set_expense_list(expenses, categories)
 
     def set_summ(self) -> None:
         self.day_summ = 0
@@ -162,9 +172,12 @@ class Bookkeeper:
         com: str,
         pk: int,
     ) -> None:
-        cat_list = self.category_repository.get_all({"name": cat})
-        assert len(cat_list) == 1
-        prim_key = cat_list[0].pk
+        if cat == "Удаленная категория":
+            prim_key = 0
+        else:
+            cat_list = self.category_repository.get_all({"name": cat})
+            assert len(cat_list) == 1
+            prim_key = cat_list[0].pk
         exp = Expense(amount, prim_key, date, comment=com, pk=pk)
         self.expense_repository.update(exp)
         self.set_summ()
@@ -182,6 +195,14 @@ class Bookkeeper:
         assert len(cat_list) == 1
         prim_key = cat_list[0].pk
         self.category_repository.delete(prim_key)
+        self.set_expense_list()
+        expenses = self.expense_repository.get_all()
+        for exp in expenses:
+            if exp.category == prim_key:
+                upd_exp = Expense(
+                    exp.amount, 0, exp.expense_date, comment=exp.comment, pk=exp.pk
+                )
+                self.expense_repository.update(upd_exp)
 
     def add_category(self, cat: Category) -> None:
         self.category_repository.add(cat)

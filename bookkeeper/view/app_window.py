@@ -476,6 +476,9 @@ class MainWindow(QtWidgets.QWidget):
         """
         self.handler_budget = handler
 
+    def clear_expense_table(self) -> None:
+        self.expenses_table.clearContents()
+
     def set_budget(self, budgets: list[Budget]) -> None:
         self.control_table.setItem(
             0, 1, QtWidgets.QTableWidgetItem(str(budgets[0].summa))
@@ -491,19 +494,25 @@ class MainWindow(QtWidgets.QWidget):
         for cat in categories:
             self.combo.addItem(f"{cat.name}")
 
-    def set_expense_list(self, expenses: list[Expense]) -> None:
+    def set_expense_list(
+        self,
+        expenses: list[Expense],
+        categories: dict[int, str],
+    ) -> None:
         row = 0
         while self.expenses_table.item(row, 0) is not None:
             row += 1
         for exp in expenses:
+            if exp.category in categories:
+                cat_name = categories[exp.category]
+            else:
+                cat_name = "Удаленная категория"
             date = exp.expense_date.strftime("%Y-%m-%d %H:%M:%S")
             self.expenses_table.setItem(row, 0, QtWidgets.QTableWidgetItem(date))
             self.expenses_table.setItem(
                 row, 1, QtWidgets.QTableWidgetItem(str(exp.amount))
             )
-            self.expenses_table.setItem(
-                row, 2, QtWidgets.QTableWidgetItem(exp.category)
-            )
+            self.expenses_table.setItem(row, 2, QtWidgets.QTableWidgetItem(cat_name))
             self.expenses_table.setItem(row, 3, QtWidgets.QTableWidgetItem(exp.comment))
             row += 1
 
